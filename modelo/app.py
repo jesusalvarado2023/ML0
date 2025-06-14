@@ -1,38 +1,53 @@
 import streamlit as st
-import pandas as pd
 import joblib
+import numpy as np
+import pandas as pd
 
-# Cargar el modelo
-#@st.cache(allow_output_mutation=True)
+# Cargar modelo
+# @st.cache(allow_output_mutation=True)
 def load_model():
-    return joblib.load("modelo/best_decision_tree_model.pkl")
+    return joblib.load("best_decision_tree_model.pkl")
 
 model = load_model()
 
-# Interfaz
 st.title("Predicción con Árbol de Decisión")
+st.subheader("Introduce los datos del paciente")
 
-st.write("Sube un archivo CSV con las características de entrada para predecir.")
+# Lista de campos esperados por el modelo
+features = [
+    "age", "bp", "sg", "al", "su", "rbc", "pc", "pcc", "ba", "bgr", "bu",
+    "sc", "sod", "pot", "hemo", "pcv", "wbcc", "rbcc", "htn", "dm",
+    "cad", "appet", "pe", "ane"
+]
 
-uploaded_file = st.file_uploader("Cargar archivo CSV", type=["csv"])
+# Valores posibles para algunas variables categóricas (modifícalo según tu dataset)
+binary_map = {
+    0: "No",
+    1: "Sí"
+}
 
-if uploaded_file is not None:
-    data = pd.read_csv(uploaded_file)
-    st.write("Datos cargados:")
-    st.dataframe(data)
+form = st.form(key="input_form")
 
-    # Realizar predicciones
-    predictions = model.predict(data)
-    st.write("### Predicciones:")
-    st.write(predictions)
+# Crear inputs dinámicamente
+inputs = {}
+for feature in features:
+    if feature in ["rbc", "pc", "pcc", "ba", "htn", "dm", "cad", "appet", "pe", "ane"]:
+        value = form.selectbox(f"{feature}", options=[0, 1], format_func=lambda x: binary_map[x], key=feature)
+    else:
+        value = form.number_input(f"{feature}", key=feature)
+    inputs[feature] = value
 
-    # Adjuntar predicciones al DataFrame original
-    result_df = data.copy()
-    result_df["Predicción"] = predictions
+submit = form.form_submit_button("Predecir")
 
-    # Mostrar resultados
-    st.dataframe(result_df)
+if submit:
+    # Convertir en DataFrame con una sola fila
+    input_df = pd.DataFrame([inputs])
+    
+    st.write("### Datos ingresados:")
+    st.dataframe(input_df)
 
-    # Permitir descargar los resultados
-    csv = result_df.to_csv(index=False)
-    st.download_button("Descargar resultados como CSV", csv, "predicciones.csv", "text/csv")
+    # Realizar predicción
+    prediction = model.predict(input_df)[0]
+    
+    st.write("### Predicción del modelo:")
+    st.success(f"Resultado: {prediction}")
