@@ -5,7 +5,7 @@ import joblib
 # Cargar el modelo
 #@st.cache(allow_output_mutation=True)
 def load_model():
-    return joblib.load("best_decision_tree_model.pkl")
+    return joblib.load("modelo/best_decision_tree_model.pkl")
 
 model = load_model()
 
