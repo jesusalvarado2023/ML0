@@ -13,12 +13,12 @@ def load_model(path):
 
 model = load_model(model_option)
 
-# Columnas esperadas por el modelo
+# Columnas esperadas
 input_features = ['age', 'bp', 'sg', 'al', 'su', 'rbc', 'pc', 'pcc', 'ba', 'bgr', 'bu',
                   'sc', 'sod', 'pot', 'hemo', 'pcv', 'wbcc', 'rbcc', 'htn', 'dm', 'cad',
                   'appet', 'pe', 'ane']
 
-# Mapeo de variables categóricas
+# Opciones categóricas y su codificación
 categorical_options = {
     'rbc': ['normal', 'abnormal'],
     'pc': ['normal', 'abnormal'],
@@ -32,10 +32,7 @@ categorical_options = {
     'ane': ['yes', 'no']
 }
 
-# Valores por defecto en la fila de datos
-default_values = [40, 2, 0, 4, 0, 1, 0, 1, 0, 44, 43, 32, 2, 0, 48, 19, 25, 17, 1, 1, 0, 1, 1, 1]
-
-# Mapeo para las categorías
+# Mapeo inverso (para valores por defecto)
 category_mapping = {
     'rbc': {0: 'normal', 1: 'abnormal'},
     'pc': {0: 'normal', 1: 'abnormal'},
@@ -49,7 +46,10 @@ category_mapping = {
     'ane': {0: 'no', 1: 'yes'}
 }
 
-# Convertir default values en diccionario para mostrar por defecto
+# Valores por defecto
+default_values = [40, 2, 0, 4, 0, 1, 0, 1, 0, 44, 43, 32, 2, 0, 48, 19, 25, 17, 1, 1, 0, 1, 1, 1]
+
+# Diccionario con valores por defecto legibles
 default_dict = {}
 for i, feature in enumerate(input_features):
     if feature in categorical_options:
@@ -57,21 +57,37 @@ for i, feature in enumerate(input_features):
     else:
         default_dict[feature] = default_values[i]
 
-# Formulario
+# Formulario de entrada
 with st.form("input_form"):
     st.subheader("Ingrese los datos del paciente (o use los valores por defecto)")
     user_input = {}
     for feature in input_features:
         if feature in categorical_options:
-            user_input[feature] = st.selectbox(f"{feature}", categorical_options[feature], index=categorical_options[feature].index(default_dict[feature]))
+            options = categorical_options[feature]
+            user_input[feature] = st.selectbox(f"{feature}", options, index=options.index(default_dict[feature]))
         else:
             user_input[feature] = st.number_input(f"{feature}", value=float(default_dict[feature]), step=0.1)
-
     submitted = st.form_submit_button("Predecir")
 
-# Predicción
 if submitted:
-    input_df = pd.DataFrame([user_input])
-    prediction = model.predict(input_df)[0]
-    resultado = "ckd (Tiene enfermedad renal crónica)" if prediction == 0 else "notckd (NO tiene enfermedad renal)"
-    st.success(f"Predicción del modelo: **{resultado}**")
+    # Mostrar la tabla original ingresada
+    input_df_display = pd.DataFrame([user_input])
+    st.write("### Datos ingresados:")
+    st.dataframe(input_df_display)
+
+    # Codificar las variables categóricas como números (Label Encoding)
+    input_df_encoded = input_df_display.copy()
+    for feature in categorical_options:
+        input_df_encoded[feature] = input_df_encoded[feature].apply(lambda x: categorical_options[feature].index(x))
+
+    # Mostrar la tabla codificada
+    st.write("### Datos procesados para el modelo (codificados):")
+    st.dataframe(input_df_encoded)
+
+    # Predecir
+    try:
+        prediction = model.predict(input_df_encoded)[0]
+        resultado = "ckd (Tiene enfermedad renal crónica)" if prediction == 0 else "notckd (NO tiene enfermedad renal)"
+        st.success(f"Predicción del modelo: **{resultado}**")
+    except Exception as e:
+        st.error(f"Error al predecir: {e}")
